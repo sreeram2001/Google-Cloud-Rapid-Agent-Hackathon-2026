@@ -107,30 +107,45 @@ export default function ScorecardPage() {
                 <div className="space-y-5">
                     {scorecard.evaluations.map((evaluation, i) => {
                         const config = roundConfig[evaluation.round_type] || { label: evaluation.round_type, gradient: "from-white/5 to-white/2" };
+                        const isPending = Object.keys(evaluation.scores).length === 0;
                         return (
                             <div
                                 key={i}
-                                className={`glass-strong rounded-2xl p-6 animate-slide-up stagger-${i + 2} relative overflow-hidden`}
+                                className={`glass-strong rounded-2xl p-6 animate-slide-up relative overflow-hidden ${isPending ? "opacity-60" : ""}`}
+                                style={{ animationDelay: `${0.2 + i * 0.1}s`, opacity: 0 }}
                             >
                                 <div className={`absolute inset-0 bg-gradient-to-br ${config.gradient} opacity-50`} />
                                 <div className="relative z-10">
-                                    <h3 className="font-semibold text-white mb-4 text-lg">
-                                        {config.label}
-                                    </h3>
-
-                                    {/* Scores grid */}
-                                    <div className="grid grid-cols-2 gap-3 mb-4">
-                                        {Object.entries(evaluation.scores).map(([key, value]) => (
-                                            <div key={key} className="flex justify-between items-center p-2 rounded-lg bg-black/20">
-                                                <span className="text-xs text-spotify-subtext capitalize">
-                                                    {key.replace(/_/g, " ")}
-                                                </span>
-                                                <span className={`text-sm font-bold ${scoreColor(value)}`}>
-                                                    {value}<span className="text-spotify-muted font-normal">/5</span>
-                                                </span>
-                                            </div>
-                                        ))}
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="font-semibold text-white text-lg">
+                                            {config.label}
+                                        </h3>
+                                        {isPending ? (
+                                            <span className="text-xs px-2 py-1 rounded-full bg-white/5 border border-white/10 text-spotify-muted">
+                                                Pending
+                                            </span>
+                                        ) : (
+                                            <span className={`text-lg font-bold ${scoreColor(evaluation.overall_score)}`}>
+                                                {evaluation.overall_score.toFixed(1)}/5
+                                            </span>
+                                        )}
                                     </div>
+
+                                    {/* Scores grid — only if evaluated */}
+                                    {!isPending && (
+                                        <div className="grid grid-cols-2 gap-3 mb-4">
+                                            {Object.entries(evaluation.scores).map(([key, value]) => (
+                                                <div key={key} className="flex justify-between items-center p-2 rounded-lg bg-black/20">
+                                                    <span className="text-xs text-spotify-subtext capitalize">
+                                                        {key.replace(/_/g, " ")}
+                                                    </span>
+                                                    <span className={`text-sm font-bold ${scoreColor(value)}`}>
+                                                        {value}<span className="text-spotify-muted font-normal">/5</span>
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
 
                                     {evaluation.hint_count > 0 && (
                                         <p className="text-xs text-yellow-400/80 mb-3 flex items-center gap-1">

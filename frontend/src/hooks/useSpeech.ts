@@ -1,34 +1,72 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 
 export function useTextToSpeech() {
     const [isSpeaking, setIsSpeaking] = useState(false);
-    const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+    const onEndCallbackRef = useRef<(() => void) | null>(null);
 
-    const speak = useCallback((text: string) => {
+    // Load voices on mount
+    useEffect(() => {
+        if (typeof window !== "undefined" && window.speechSynthesis) {
+            window.speechSynthesis.getVoices();
+            window.speechSynthesis.onvoiceschanged = () => {
+                window.speechSynthesis.getVoices();
+            };
+        }
+    }, []);
+
+    const speak = useCallback((text: string, onEnd?: () => void) => {
         if (typeof window === "undefined" || !window.speechSynthesis) return;
 
-        // Cancel any current speech
         window.speechSynthesis.cancel();
+        onEndCallbackRef.current = onEnd || null;
 
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.0;
+        utterance.rate = 1.05;
         utterance.pitch = 1.0;
         utterance.volume = 1.0;
 
-        // Try to pick a natural-sounding voice
+        // Pick best available voice — prefer natural/enhanced voices
         const voices = window.speechSynthesis.getVoices();
-        const preferred = voices.find(
-            (v) => v.name.includes("Samantha") || v.name.includes("Google") || v.name.includes("Natural")
-        );
-        if (preferred) utterance.voice = preferred;
+        const preferredNames = [
+            "Samantha",        // macOS — natural female
+            "Daniel",          // macOS — natural male (British)
+            "Karen",           // macOS — natural female (Australian)
+            "Moira",           // macOS — natural female (Irish)
+            "Google UK English Female",
+            "Google UK English Male",
+            "Google US English",
+            "Microsoft Zira",
+            "Microsoft David",
+        ];
+
+        let selectedVoice = null;
+        for (const name of preferredNames) {
+            const found = voices.find((v) => v.name.includes(name));
+            if (found) {
+                selectedVoice = found;
+                break;
+            }
+        }
+        // Fallback: pick any English voice
+        if (!selectedVoice) {
+            selectedVoice = voices.find((v) => v.lang.startsWith("en")) || null;
+        }
+        if (selectedVoice) utterance.voice = selectedVoice;
 
         utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
+        utterance.onend = () => {
+            setIsSpeaking(false);
+            if (onEndCallbackRef.current) {
+                onEndCallbackRef.current();
+                onEndCallbackRef.current = null;
+            }
+        };
+        utterance.onerror = () => {
+            setIsSpeaking(false);
+        };
 
-        utteranceRef.current = utterance;
         window.speechSynthesis.speak(utterance);
     }, []);
 
@@ -53,9 +91,11 @@ export function useSpeechToText() {
         const SpeechRecognition =
             (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-        if (!SpeechRecognition) {
-            alert("Speech recognition is not supported in this browser. Use Chrome.");
-            return;
+        if (!SpeechRecognition) return;
+
+        // Stop previous if exists
+        if (recognitionRef.current) {
+            try { recognitionRef.current.stop(); } catch { }
         }
 
         const recognition = new SpeechRecognition();
@@ -73,13 +113,8 @@ export function useSpeechToText() {
             setTranscript(finalTranscript);
         };
 
-        recognition.onerror = () => {
-            setIsListening(false);
-        };
-
-        recognition.onend = () => {
-            setIsListening(false);
-        };
+        recognition.onerror = () => setIsListening(false);
+        recognition.onend = () => setIsListening(false);
 
         recognitionRef.current = recognition;
         recognition.start();
@@ -87,7 +122,7 @@ export function useSpeechToText() {
 
     const stopListening = useCallback(() => {
         if (recognitionRef.current) {
-            recognitionRef.current.stop();
+            try { recognitionRef.current.stop(); } catch { }
             setIsListening(false);
         }
     }, []);

@@ -36,42 +36,57 @@ async def start_session(request: StartSessionRequest):
     )
 
 
-@router.get("/{session_id}/scorecard", response_model=ScorecardResponse)
+@router.get("/{session_id}/scorecard")
 async def get_scorecard(session_id: str):
     """Get the final scorecard for a completed session."""
     db = get_db()
 
+    # Get session to know which rounds were selected
+    session_doc = await db.sessions.find_one({"session_id": session_id})
+    selected_rounds = session_doc.get("rounds", []) if session_doc else []
+
+    # Get all evaluations for this session
     evaluations = await db.evaluations.find(
         {"session_id": session_id}
-    ).to_list(length=10)
-
-    if not evaluations:
-        return ScorecardResponse(
-            session_id=session_id,
-            evaluations=[],
-            overall_feedback="No evaluations completed yet.",
-            total_score=0.0,
-        )
+    ).to_list(length=20)
 
     eval_responses = []
     total = 0.0
+    completed_rounds = set()
+
     for ev in evaluations:
         score = ev.get("overall_score", 0)
         total += score
+        round_type = ev.get("round_type", "unknown")
+        completed_rounds.add(round_type)
         eval_responses.append({
             "session_id": session_id,
-            "round_type": ev["round_type"],
-            "scores": ev["scores"],
-            "feedback": ev["feedback"],
+            "round_type": round_type,
+            "scores": ev.get("scores", {}),
+            "feedback": ev.get("feedback", ""),
             "overall_score": score,
             "hint_count": ev.get("hint_count", 0),
         })
 
+    # Add placeholder entries for rounds that weren't evaluated yet
+    for round_type in selected_rounds:
+        if round_type not in completed_rounds:
+            eval_responses.append({
+                "session_id": session_id,
+                "round_type": round_type,
+                "scores": {},
+                "feedback": "Round not yet evaluated. Complete the round and let the agent finish its assessment.",
+                "overall_score": 0.0,
+                "hint_count": 0,
+            })
+
     avg_score = total / len(evaluations) if evaluations else 0
+    completed_count = len(evaluations)
+    total_count = len(selected_rounds)
 
     return ScorecardResponse(
         session_id=session_id,
         evaluations=eval_responses,
-        overall_feedback=f"Completed {len(evaluations)} round(s). Average score: {avg_score:.1f}/5",
+        overall_feedback=f"Completed {completed_count}/{total_count} round(s). Average score: {avg_score:.1f}/5" if completed_count > 0 else "No rounds evaluated yet. Complete your interview rounds to see scores.",
         total_score=avg_score,
     )

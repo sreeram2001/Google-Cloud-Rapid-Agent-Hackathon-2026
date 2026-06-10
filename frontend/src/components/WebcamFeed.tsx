@@ -9,9 +9,12 @@ export default function WebcamFeed() {
 
     const startCamera = async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { width: 160, height: 160, facingMode: "user" },
+            });
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
+                await videoRef.current.play();
                 setActive(true);
             }
         } catch {
@@ -29,42 +32,40 @@ export default function WebcamFeed() {
     };
 
     useEffect(() => {
+        // Auto-start camera
+        startCamera();
         return () => stopCamera();
     }, []);
 
-    if (error) return null;
+    if (error) {
+        return (
+            <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                <span className="text-xs text-spotify-muted">No cam</span>
+            </div>
+        );
+    }
 
     return (
-        <div className="relative">
-            {!active ? (
-                <button
-                    onClick={startCamera}
-                    className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer"
-                    title="Turn on camera"
-                >
-                    <svg className="w-6 h-6 text-spotify-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
-                    </svg>
-                </button>
-            ) : (
-                <div className="relative group">
-                    <video
-                        ref={videoRef}
-                        autoPlay
-                        muted
-                        playsInline
-                        className="w-32 h-32 rounded-2xl object-cover border-2 border-spotify-green/30 shadow-lg shadow-spotify-green/10"
-                    />
+        <div className="relative group">
+            <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className={`w-28 h-28 rounded-2xl object-cover border-2 transition-all ${active ? "border-spotify-green/30 shadow-lg shadow-spotify-green/10" : "border-white/10"
+                    }`}
+            />
+            {active && (
+                <>
+                    <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-spotify-green animate-pulse" />
                     <button
                         onClick={stopCamera}
-                        className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                     >
-                        ×
+                        ✕
                     </button>
-                    <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-spotify-green animate-pulse" />
-                </div>
+                </>
             )}
-            <video ref={active ? undefined : videoRef} className="hidden" />
         </div>
     );
 }

@@ -149,6 +149,32 @@ export default function InterviewPage() {
         }
     };
 
+    const requestHint = async () => {
+        if (isLoading) return;
+        stopSpeaking();
+        setMessages((prev) => [...prev, { role: "user", content: "💡 Requesting a hint..." }]);
+        setIsLoading(true);
+
+        try {
+            const res = await fetch("http://localhost:8000/api/interview/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    message: "I'm stuck. Can you give me a hint without giving away the answer?",
+                    code: code,
+                }),
+            });
+            const data = await res.json();
+            setMessages((prev) => [...prev, { role: "agent", content: data.reply }]);
+            if (voiceEnabled) speak(data.reply);
+        } catch (error) {
+            console.error("Failed to get hint:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const finishRound = () => {
         stopSpeaking();
         setRoundComplete(true);
@@ -397,13 +423,25 @@ export default function InterviewPage() {
                     <div className="w-1/2 flex flex-col">
                         <div className="flex items-center justify-between px-5 py-3 border-b border-white/5 glass">
                             <span className="text-sm text-spotify-subtext font-medium">Solution Editor</span>
-                            <button
-                                onClick={submitCode}
-                                disabled={isLoading || roundComplete}
-                                className="px-5 py-2 bg-spotify-green rounded-full text-spotify-black text-xs font-bold hover:bg-spotify-green-light transition-all disabled:opacity-30 cursor-pointer glow-green"
-                            >
-                                Submit Code
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {/* Hint button */}
+                                {!roundComplete && (
+                                    <button
+                                        onClick={requestHint}
+                                        disabled={isLoading}
+                                        className="px-4 py-2 rounded-full text-xs font-medium border border-yellow-500/30 text-yellow-400 bg-yellow-500/5 hover:bg-yellow-500/10 hover:border-yellow-500/50 transition-all disabled:opacity-30 cursor-pointer flex items-center gap-1.5"
+                                    >
+                                        💡 Hint
+                                    </button>
+                                )}
+                                <button
+                                    onClick={submitCode}
+                                    disabled={isLoading || roundComplete}
+                                    className="px-5 py-2 bg-spotify-green rounded-full text-spotify-black text-xs font-bold hover:bg-spotify-green-light transition-all disabled:opacity-30 cursor-pointer glow-green"
+                                >
+                                    Submit Code
+                                </button>
+                            </div>
                         </div>
                         <div className="flex-1 bg-[#0d0d0d]">
                             <MonacoEditor
