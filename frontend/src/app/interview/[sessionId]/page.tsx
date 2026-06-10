@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
@@ -15,6 +15,7 @@ interface Message {
 
 export default function InterviewPage() {
     const params = useParams();
+    const router = useRouter();
     const sessionId = params.sessionId as string;
 
     const [messages, setMessages] = useState<Message[]>([]);
@@ -26,7 +27,6 @@ export default function InterviewPage() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        // Fetch session info and start the first round
         initSession();
     }, []);
 
@@ -36,7 +36,6 @@ export default function InterviewPage() {
 
     const initSession = async () => {
         try {
-            // Send initial message to kick off the interview
             const res = await fetch("http://localhost:8000/api/interview/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -106,14 +105,12 @@ export default function InterviewPage() {
                 }),
             });
 
-            // Tell the agent the code was submitted
             const res = await fetch("http://localhost:8000/api/interview/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     session_id: sessionId,
-                    message:
-                        "I've submitted my final solution. Please evaluate my code.",
+                    message: "I've submitted my final solution. Please evaluate my code.",
                     code,
                 }),
             });
@@ -137,41 +134,51 @@ export default function InterviewPage() {
         }
     };
 
-    const roundLabel: Record<string, string> = {
-        hr: "🤝 HR Round",
-        manager: "📋 Manager Round",
-        technical: "🧠 Technical Round",
-        coding: "💻 Coding Round",
-        loading: "⏳ Loading...",
+    const roundConfig: Record<string, { label: string; color: string }> = {
+        hr: { label: "🤝 HR Round", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
+        manager: { label: "📋 Manager Round", color: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+        technical: { label: "🧠 Technical Round", color: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
+        coding: { label: "💻 Coding Round", color: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
+        loading: { label: "⏳ Connecting...", color: "bg-white/5 text-spotify-muted border-white/10" },
     };
 
+    const currentConfig = roundConfig[currentRound] || roundConfig.loading;
+
     return (
-        <main className="h-screen flex flex-col">
+        <main className="h-screen flex flex-col bg-spotify-black">
             {/* Header */}
-            <header className="flex items-center justify-between px-6 py-3 border-b border-gray-800 bg-gray-900/80">
-                <h1 className="text-lg font-semibold">HireIntOS</h1>
-                <span className="text-sm px-3 py-1 rounded-full bg-gray-800 text-gray-300">
-                    {roundLabel[currentRound] || currentRound}
+            <header className="flex items-center justify-between px-6 py-3 glass border-b border-white/5">
+                <div className="flex items-center gap-3">
+                    <h1 className="text-lg font-bold font-[family-name:var(--font-display)]">
+                        <span className="text-gradient">HireInt</span><span className="text-white">OS</span>
+                    </h1>
+                </div>
+                <span className={`text-xs px-3 py-1.5 rounded-full border ${currentConfig.color}`}>
+                    {currentConfig.label}
                 </span>
+                <button
+                    onClick={() => router.push(`/scorecard/${sessionId}`)}
+                    className="text-xs text-spotify-muted hover:text-spotify-green transition-colors cursor-pointer"
+                >
+                    End & View Scorecard →
+                </button>
             </header>
 
             {/* Main content */}
             <div className="flex-1 flex overflow-hidden">
                 {/* Chat panel */}
-                <div
-                    className={`flex flex-col ${showEditor ? "w-1/2 border-r border-gray-800" : "w-full max-w-3xl mx-auto"}`}
-                >
+                <div className={`flex flex-col ${showEditor ? "w-1/2 border-r border-white/5" : "w-full max-w-3xl mx-auto"}`}>
                     {/* Messages */}
                     <div className="flex-1 overflow-y-auto p-6 space-y-4">
                         {messages.map((msg, i) => (
                             <div
                                 key={i}
-                                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-slide-up`}
                             >
                                 <div
-                                    className={`max-w-[80%] p-4 rounded-xl text-sm whitespace-pre-wrap ${msg.role === "user"
-                                            ? "bg-blue-600/20 text-blue-100 border border-blue-800/50"
-                                            : "bg-gray-800/60 text-gray-200 border border-gray-700/50"
+                                    className={`max-w-[80%] p-4 rounded-2xl text-sm whitespace-pre-wrap leading-relaxed ${msg.role === "user"
+                                            ? "bg-spotify-green/10 text-white border border-spotify-green/20 rounded-br-sm"
+                                            : "glass-strong text-spotify-subtext rounded-bl-sm"
                                         }`}
                                 >
                                     {msg.content}
@@ -180,8 +187,15 @@ export default function InterviewPage() {
                         ))}
                         {isLoading && (
                             <div className="flex justify-start">
-                                <div className="bg-gray-800/60 text-gray-400 p-4 rounded-xl text-sm border border-gray-700/50">
-                                    Thinking...
+                                <div className="glass-strong text-spotify-muted p-4 rounded-2xl rounded-bl-sm text-sm">
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex gap-1">
+                                            <div className="w-2 h-2 rounded-full bg-spotify-green/50 animate-bounce" style={{ animationDelay: "0ms" }} />
+                                            <div className="w-2 h-2 rounded-full bg-spotify-green/50 animate-bounce" style={{ animationDelay: "150ms" }} />
+                                            <div className="w-2 h-2 rounded-full bg-spotify-green/50 animate-bounce" style={{ animationDelay: "300ms" }} />
+                                        </div>
+                                        <span className="text-xs">Thinking...</span>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -189,20 +203,20 @@ export default function InterviewPage() {
                     </div>
 
                     {/* Input */}
-                    <div className="p-4 border-t border-gray-800">
-                        <div className="flex gap-2">
+                    <div className="p-4 border-t border-white/5">
+                        <div className="flex gap-3 glass-strong rounded-2xl p-2">
                             <textarea
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Type your response..."
                                 rows={2}
-                                className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:border-purple-500"
+                                className="flex-1 bg-transparent px-4 py-2 text-sm resize-none focus:outline-none placeholder:text-spotify-muted"
                             />
                             <button
                                 onClick={sendMessage}
                                 disabled={isLoading || !input.trim()}
-                                className="px-4 py-2 bg-purple-600 rounded-lg text-sm font-medium disabled:opacity-40 hover:bg-purple-500 transition-colors cursor-pointer"
+                                className="self-end px-5 py-2.5 bg-spotify-green rounded-xl text-spotify-black text-sm font-bold disabled:opacity-30 hover:bg-spotify-green-light transition-all cursor-pointer"
                             >
                                 Send
                             </button>
@@ -213,17 +227,17 @@ export default function InterviewPage() {
                 {/* Code editor panel (coding round only) */}
                 {showEditor && (
                     <div className="w-1/2 flex flex-col">
-                        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800 bg-gray-900/50">
-                            <span className="text-sm text-gray-400">Solution Editor</span>
+                        <div className="flex items-center justify-between px-5 py-3 border-b border-white/5 glass">
+                            <span className="text-sm text-spotify-subtext font-medium">Solution Editor</span>
                             <button
                                 onClick={submitCode}
                                 disabled={isLoading}
-                                className="px-4 py-1.5 bg-green-600 rounded-md text-sm font-medium hover:bg-green-500 transition-colors disabled:opacity-40 cursor-pointer"
+                                className="px-5 py-2 bg-spotify-green rounded-full text-spotify-black text-xs font-bold hover:bg-spotify-green-light transition-all disabled:opacity-30 cursor-pointer glow-green"
                             >
                                 Submit Code
                             </button>
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 bg-[#0d0d0d]">
                             <MonacoEditor
                                 height="100%"
                                 defaultLanguage="python"
@@ -232,11 +246,15 @@ export default function InterviewPage() {
                                 onChange={(value) => setCode(value || "")}
                                 options={{
                                     fontSize: 14,
+                                    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
                                     minimap: { enabled: false },
                                     lineNumbers: "on",
                                     scrollBeyondLastLine: false,
                                     wordWrap: "on",
                                     padding: { top: 16 },
+                                    renderLineHighlight: "gutter",
+                                    cursorBlinking: "smooth",
+                                    smoothScrolling: true,
                                 }}
                             />
                         </div>

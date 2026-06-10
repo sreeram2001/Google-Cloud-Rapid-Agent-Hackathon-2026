@@ -7,3 +7,5 @@ python-dotenv>=1.0.0
 websockets>=14.0
 pydantic>=2.10.0
 mcp>=1.0.0
+PyPDF2>=3.0.0
+python-multipart>=0.0.9

@@ -40,83 +40,122 @@ export default function ScorecardPage() {
         }
     };
 
-    const roundLabel: Record<string, string> = {
-        hr: "🤝 HR Round",
-        manager: "📋 Manager Round",
-        technical: "🧠 Technical Round",
-        coding: "💻 Coding Round",
+    const roundConfig: Record<string, { label: string; gradient: string }> = {
+        hr: { label: "🤝 HR Round", gradient: "from-emerald-500/20 to-teal-500/5" },
+        manager: { label: "📋 Manager Round", gradient: "from-blue-500/20 to-indigo-500/5" },
+        technical: { label: "🧠 Technical Round", gradient: "from-purple-500/20 to-pink-500/5" },
+        coding: { label: "💻 Coding Round", gradient: "from-orange-500/20 to-yellow-500/5" },
     };
 
     if (!scorecard) {
         return (
-            <main className="min-h-screen flex items-center justify-center">
-                <p className="text-gray-400">Loading scorecard...</p>
+            <main className="min-h-screen flex items-center justify-center mesh-gradient">
+                <div className="flex items-center gap-3 text-spotify-subtext">
+                    <div className="flex gap-1">
+                        <div className="w-2 h-2 rounded-full bg-spotify-green/50 animate-bounce" />
+                        <div className="w-2 h-2 rounded-full bg-spotify-green/50 animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <div className="w-2 h-2 rounded-full bg-spotify-green/50 animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                    Loading scorecard...
+                </div>
             </main>
         );
     }
 
+    const scoreColor = (score: number) => {
+        if (score >= 4) return "text-spotify-green";
+        if (score >= 3) return "text-yellow-400";
+        return "text-red-400";
+    };
+
     return (
-        <main className="min-h-screen px-6 py-12">
-            <div className="max-w-3xl mx-auto">
-                <h1 className="text-3xl font-bold mb-2">Your Scorecard</h1>
-                <p className="text-gray-400 mb-8">{scorecard.overall_feedback}</p>
+        <main className="min-h-screen px-6 py-12 mesh-gradient relative">
+            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-spotify-green/5 rounded-full blur-3xl" />
+
+            <div className="max-w-3xl mx-auto relative z-10">
+                {/* Header */}
+                <div className="mb-10 animate-slide-up">
+                    <button
+                        onClick={() => router.push("/select")}
+                        className="text-spotify-muted hover:text-spotify-green transition-colors text-sm mb-6 inline-block cursor-pointer"
+                    >
+                        ← New Interview
+                    </button>
+                    <h1 className="text-4xl font-bold font-[family-name:var(--font-display)] tracking-tight">
+                        Your <span className="text-gradient">Scorecard</span>
+                    </h1>
+                    <p className="text-spotify-subtext mt-2">{scorecard.overall_feedback}</p>
+                </div>
 
                 {/* Overall score */}
-                <div className="mb-8 p-6 rounded-xl bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-gray-800">
-                    <p className="text-sm text-gray-400 mb-1">Overall Score</p>
-                    <p className="text-4xl font-bold">
+                <div className="mb-10 glass-strong rounded-3xl p-8 text-center glow-green animate-slide-up stagger-1">
+                    <p className="text-xs text-spotify-muted uppercase tracking-wider mb-2">Overall Score</p>
+                    <p className={`text-6xl font-bold font-[family-name:var(--font-display)] ${scoreColor(scorecard.total_score)}`}>
                         {scorecard.total_score.toFixed(1)}
-                        <span className="text-lg text-gray-500"> / 5.0</span>
+                        <span className="text-2xl text-spotify-muted font-normal"> / 5.0</span>
                     </p>
+                    {/* Score bar */}
+                    <div className="mt-4 w-48 h-2 bg-white/5 rounded-full mx-auto overflow-hidden">
+                        <div
+                            className="h-full bg-spotify-green rounded-full transition-all duration-1000"
+                            style={{ width: `${(scorecard.total_score / 5) * 100}%` }}
+                        />
+                    </div>
                 </div>
 
                 {/* Per-round evaluations */}
-                <div className="space-y-6">
-                    {scorecard.evaluations.map((evaluation, i) => (
-                        <div
-                            key={i}
-                            className="p-6 rounded-xl bg-gray-900/50 border border-gray-800"
-                        >
-                            <h3 className="font-semibold mb-3">
-                                {roundLabel[evaluation.round_type] || evaluation.round_type}
-                            </h3>
+                <div className="space-y-5">
+                    {scorecard.evaluations.map((evaluation, i) => {
+                        const config = roundConfig[evaluation.round_type] || { label: evaluation.round_type, gradient: "from-white/5 to-white/2" };
+                        return (
+                            <div
+                                key={i}
+                                className={`glass-strong rounded-2xl p-6 animate-slide-up stagger-${i + 2} relative overflow-hidden`}
+                            >
+                                <div className={`absolute inset-0 bg-gradient-to-br ${config.gradient} opacity-50`} />
+                                <div className="relative z-10">
+                                    <h3 className="font-semibold text-white mb-4 text-lg">
+                                        {config.label}
+                                    </h3>
 
-                            {/* Scores */}
-                            <div className="grid grid-cols-2 gap-3 mb-4">
-                                {Object.entries(evaluation.scores).map(([key, value]) => (
-                                    <div key={key} className="flex justify-between text-sm">
-                                        <span className="text-gray-400 capitalize">
-                                            {key.replace(/_/g, " ")}
-                                        </span>
-                                        <span className="font-medium">
-                                            {value}
-                                            <span className="text-gray-600">/5</span>
-                                        </span>
+                                    {/* Scores grid */}
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        {Object.entries(evaluation.scores).map(([key, value]) => (
+                                            <div key={key} className="flex justify-between items-center p-2 rounded-lg bg-black/20">
+                                                <span className="text-xs text-spotify-subtext capitalize">
+                                                    {key.replace(/_/g, " ")}
+                                                </span>
+                                                <span className={`text-sm font-bold ${scoreColor(value)}`}>
+                                                    {value}<span className="text-spotify-muted font-normal">/5</span>
+                                                </span>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
+
+                                    {evaluation.hint_count > 0 && (
+                                        <p className="text-xs text-yellow-400/80 mb-3 flex items-center gap-1">
+                                            <span>💡</span> Hints used: {evaluation.hint_count}
+                                        </p>
+                                    )}
+
+                                    <p className="text-sm text-spotify-subtext leading-relaxed">{evaluation.feedback}</p>
+                                </div>
                             </div>
-
-                            {evaluation.hint_count > 0 && (
-                                <p className="text-xs text-yellow-500 mb-2">
-                                    💡 Hints used: {evaluation.hint_count}
-                                </p>
-                            )}
-
-                            <p className="text-sm text-gray-300">{evaluation.feedback}</p>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 {scorecard.evaluations.length === 0 && (
-                    <p className="text-gray-500 text-center py-8">
-                        No evaluations yet. Complete an interview round to see your scores.
-                    </p>
+                    <div className="glass-strong rounded-2xl p-12 text-center">
+                        <p className="text-spotify-muted text-lg">No evaluations yet.</p>
+                        <p className="text-spotify-muted text-sm mt-2">Complete an interview round to see your scores here.</p>
+                    </div>
                 )}
 
-                <div className="mt-8 text-center">
+                <div className="mt-10 text-center animate-slide-up stagger-4">
                     <button
                         onClick={() => router.push("/select")}
-                        className="px-6 py-3 bg-gray-800 rounded-lg font-medium hover:bg-gray-700 transition-colors cursor-pointer"
+                        className="px-8 py-3 bg-spotify-green rounded-full text-spotify-black font-bold hover:bg-spotify-green-light hover:scale-105 transition-all duration-300 cursor-pointer glow-green"
                     >
                         Start New Interview
                     </button>
