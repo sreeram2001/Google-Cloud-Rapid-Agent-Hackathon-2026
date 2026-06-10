@@ -105,13 +105,20 @@ async def chat(request: ChatMessageRequest):
     user_content = Content(parts=[Part(text=message_text)], role="user")
 
     response_text = ""
-    async for event in runner.run_async(
-        user_id="candidate", session_id=adk_session_id, new_message=user_content
-    ):
-        if event.content and event.content.parts:
-            for part in event.content.parts:
-                if part.text:
-                    response_text += part.text
+    try:
+        async for event in runner.run_async(
+            user_id="candidate", session_id=adk_session_id, new_message=user_content
+        ):
+            if event.content and event.content.parts:
+                for part in event.content.parts:
+                    if part.text:
+                        response_text += part.text
+    except Exception as e:
+        error_msg = str(e)
+        if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+            response_text = "⚠️ API rate limit reached. Please wait a moment and try again."
+        else:
+            response_text = f"⚠️ Error communicating with AI: {error_msg[:200]}"
 
     # Save message to MongoDB session
     await db.sessions.update_one(

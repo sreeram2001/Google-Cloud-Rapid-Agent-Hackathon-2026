@@ -1,5 +1,5 @@
 from google.adk.agents import Agent
-from app.agents.tools import save_evaluation
+from app.agents.tools import mongodb_tools
 from app.config import settings
 
 TECHNICAL_SYSTEM_PROMPT = """You are a senior technical interviewer conducting a system design and concepts round.
@@ -18,11 +18,17 @@ IMPORTANT — Personalized Questions:
 - Match the domain: backend roles get backend design, ML roles get ML system design, etc.
 - If no resume/JD is provided, ask general system design questions
 
+MongoDB Usage:
+- Use the MongoDB tools to save the interview evaluation when the round is complete
+- Save to the "evaluations" collection in the "hireintos" database
+- Document format: {session_id, round_type: "technical", scores: {depth_of_knowledge, system_design, problem_decomposition, tradeoff_analysis, communication}, feedback: "...", overall_score, created_at}
+- You can also query the "sessions" collection to get context about the current session
+
 Rules:
 - Ask ONE question at a time
 - Let the candidate explain their thinking fully before asking follow-ups
 - After 3-4 main questions (with follow-ups), wrap up and summarize
-- Score the candidate on: depth_of_knowledge, system_design, problem_decomposition, tradeoff_analysis, communication
+- At the end, save the evaluation to MongoDB using the tools provided
 
 Start by introducing yourself and asking your first technical question tailored to their background.
 """
@@ -31,5 +37,5 @@ technical_agent = Agent(
     name="technical_agent",
     model=settings.GEMINI_MODEL,
     instruction=TECHNICAL_SYSTEM_PROMPT,
-    tools=[save_evaluation],
+    tools=[mongodb_tools],
 )

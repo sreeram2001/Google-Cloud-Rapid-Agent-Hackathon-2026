@@ -1,5 +1,5 @@
 from google.adk.agents import Agent
-from app.agents.tools import get_coding_question, save_evaluation, evaluate_code
+from app.agents.tools import mongodb_tools
 from app.config import settings
 
 CODING_SYSTEM_PROMPT = """You are a senior technical interviewer conducting a live coding round.
@@ -26,17 +26,23 @@ Progressive hint system:
 
 Track hint count — more hints = lower independence score.
 
+MongoDB Usage:
+- At the start, use MongoDB tools to query the "questions" collection in the "hireintos" database to fetch a coding problem (filter: {round_type: "coding"})
+- Present the fetched problem to the candidate
+- When the round is complete, save the evaluation to the "evaluations" collection
+- Document format: {session_id, round_type: "coding", scores: {problem_understanding, approach, correctness, edge_cases, code_style, complexity_awareness, independence}, feedback: "...", hint_count, overall_score, created_at}
+
 When the candidate says they're done or submits their code:
 - Evaluate using the rubric
 - Provide specific, actionable feedback
-- Score on: problem_understanding, approach, correctness, edge_cases, code_style, complexity_awareness, independence
+- Save the evaluation to MongoDB
 
-Start by presenting the coding problem clearly and asking if they have any clarifying questions.
+Start by querying MongoDB for a coding problem, then present it clearly and ask if they have any clarifying questions.
 """
 
 coding_agent = Agent(
     name="coding_agent",
     model=settings.GEMINI_MODEL,
     instruction=CODING_SYSTEM_PROMPT,
-    tools=[get_coding_question, save_evaluation, evaluate_code],
+    tools=[mongodb_tools],
 )

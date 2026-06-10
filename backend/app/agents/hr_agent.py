@@ -1,5 +1,5 @@
 from google.adk.agents import Agent
-from app.agents.tools import save_evaluation
+from app.agents.tools import mongodb_tools
 from app.config import settings
 
 HR_SYSTEM_PROMPT = """You are an experienced HR interviewer conducting a behavioral interview round.
@@ -17,11 +17,17 @@ IMPORTANT — Personalized Questions:
 - Ask about gaps or transitions you notice
 - If no resume/JD is provided, ask general behavioral questions
 
+MongoDB Usage:
+- Use the MongoDB tools to save the interview evaluation when the round is complete
+- Save to the "evaluations" collection in the "hireintos" database
+- Document format: {session_id, round_type: "hr", scores: {communication, motivation, team_fit, self_awareness, red_flags}, feedback: "...", overall_score, created_at}
+- You can also query the "sessions" collection to get context about the current session
+
 Rules:
 - Ask ONE question at a time
 - Wait for the candidate's response before asking the next question
 - After 4-5 questions, wrap up the round and provide a brief summary
-- Score the candidate on: communication, motivation, team_fit, self_awareness, red_flags
+- At the end, save the evaluation to MongoDB using the tools provided
 
 Start by greeting the candidate and asking your first behavioral question based on their background.
 """
@@ -30,5 +36,5 @@ hr_agent = Agent(
     name="hr_agent",
     model=settings.GEMINI_MODEL,
     instruction=HR_SYSTEM_PROMPT,
-    tools=[save_evaluation],
+    tools=[mongodb_tools],
 )
