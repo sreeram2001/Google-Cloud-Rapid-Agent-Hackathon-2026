@@ -24,6 +24,8 @@ export default function InterviewPage() {
     const [currentRound, setCurrentRound] = useState<string>("loading");
     const [code, setCode] = useState("# Write your solution here\n");
     const [showEditor, setShowEditor] = useState(false);
+    const [roundComplete, setRoundComplete] = useState(false);
+    const [allComplete, setAllComplete] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -47,6 +49,7 @@ export default function InterviewPage() {
             const data = await res.json();
             setCurrentRound(data.round_type);
             setShowEditor(data.round_type === "coding");
+            if (data.is_complete) setAllComplete(true);
             setMessages([{ role: "agent", content: data.reply }]);
         } catch (error) {
             console.error("Failed to init session:", error);
@@ -80,6 +83,7 @@ export default function InterviewPage() {
             const data = await res.json();
             setCurrentRound(data.round_type);
             setShowEditor(data.round_type === "coding");
+            if (data.is_complete) setAllComplete(true);
             setMessages((prev) => [...prev, { role: "agent", content: data.reply }]);
         } catch (error) {
             console.error("Failed to send message:", error);
@@ -120,8 +124,54 @@ export default function InterviewPage() {
                 { role: "user", content: "📤 Code submitted for evaluation" },
                 { role: "agent", content: data.reply },
             ]);
+            setRoundComplete(true);
         } catch (error) {
             console.error("Failed to submit code:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const finishRound = () => {
+        setRoundComplete(true);
+    };
+
+    const goToNextRound = async () => {
+        setIsLoading(true);
+        try {
+            const res = await fetch(`http://localhost:8000/api/interview/next-round?session_id=${sessionId}`, {
+                method: "POST",
+            });
+            const data = await res.json();
+
+            if (data.status === "all_rounds_complete") {
+                setAllComplete(true);
+                setMessages((prev) => [
+                    ...prev,
+                    { role: "agent", content: "🎉 All rounds completed! Let's check your scorecard." },
+                ]);
+            } else {
+                // Reset state for new round
+                setRoundComplete(false);
+                setMessages([]);
+                setCode("# Write your solution here\n");
+
+                // Init the new round
+                const chatRes = await fetch("http://localhost:8000/api/interview/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        message: "Hello, I'm ready for the next round.",
+                    }),
+                });
+                const chatData = await chatRes.json();
+                setCurrentRound(chatData.round_type);
+                setShowEditor(chatData.round_type === "coding");
+                setMessages([{ role: "agent", content: chatData.reply }]);
+            }
+        } catch (error) {
+            console.error("Failed to advance round:", error);
         } finally {
             setIsLoading(false);
         }
@@ -156,12 +206,23 @@ export default function InterviewPage() {
                 <span className={`text-xs px-3 py-1.5 rounded-full border ${currentConfig.color}`}>
                     {currentConfig.label}
                 </span>
-                <button
-                    onClick={() => router.push(`/scorecard/${sessionId}`)}
-                    className="text-xs text-spotify-muted hover:text-spotify-green transition-colors cursor-pointer"
-                >
-                    End & View Scorecard →
-                </button>
+                <div className="flex items-center gap-3">
+                    {/* Finish Round button */}
+                    {!roundComplete && !allComplete && currentRound !== "loading" && (
+                        <button
+                            onClick={finishRound}
+                            className="text-xs px-3 py-1.5 rounded-full border border-white/10 text-spotify-subtext hover:text-white hover:border-white/20 transition-all cursor-pointer"
+                        >
+                            Finish Round
+                        </button>
+                    )}
+                    <button
+                        onClick={() => router.push(`/scorecard/${sessionId}`)}
+                        className="text-xs text-spotify-muted hover:text-spotify-green transition-colors cursor-pointer"
+                    >
+                        View Scorecard →
+                    </button>
+                </div>
             </header>
 
             {/* Main content */}
@@ -177,8 +238,8 @@ export default function InterviewPage() {
                             >
                                 <div
                                     className={`max-w-[80%] p-4 rounded-2xl text-sm whitespace-pre-wrap leading-relaxed ${msg.role === "user"
-                                            ? "bg-spotify-green/10 text-white border border-spotify-green/20 rounded-br-sm"
-                                            : "glass-strong text-spotify-subtext rounded-bl-sm"
+                                        ? "bg-spotify-green/10 text-white border border-spotify-green/20 rounded-br-sm"
+                                        : "glass-strong text-spotify-subtext rounded-bl-sm"
                                         }`}
                                 >
                                     {msg.content}
@@ -202,26 +263,67 @@ export default function InterviewPage() {
                         <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Input */}
-                    <div className="p-4 border-t border-white/5">
-                        <div className="flex gap-3 glass-strong rounded-2xl p-2">
-                            <textarea
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder="Type your response..."
-                                rows={2}
-                                className="flex-1 bg-transparent px-4 py-2 text-sm resize-none focus:outline-none placeholder:text-spotify-muted"
-                            />
-                            <button
-                                onClick={sendMessage}
-                                disabled={isLoading || !input.trim()}
-                                className="self-end px-5 py-2.5 bg-spotify-green rounded-xl text-spotify-black text-sm font-bold disabled:opacity-30 hover:bg-spotify-green-light transition-all cursor-pointer"
-                            >
-                                Send
-                            </button>
+                    {/* Next Round / Scorecard transition panel */}
+                    {(roundComplete || allComplete) && (
+                        <div className="p-4 border-t border-white/5">
+                            <div className="glass-strong rounded-2xl p-5 text-center animate-slide-up">
+                                {allComplete ? (
+                                    <>
+                                        <p className="text-white font-semibold mb-3">🎉 All rounds completed!</p>
+                                        <button
+                                            onClick={() => router.push(`/scorecard/${sessionId}`)}
+                                            className="px-6 py-2.5 bg-spotify-green rounded-full text-spotify-black text-sm font-bold hover:bg-spotify-green-light hover:scale-105 transition-all cursor-pointer glow-green"
+                                        >
+                                            View Scorecard
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-white font-semibold mb-1">Round Complete ✓</p>
+                                        <p className="text-spotify-muted text-xs mb-4">Ready for the next interviewer?</p>
+                                        <div className="flex items-center justify-center gap-3">
+                                            <button
+                                                onClick={goToNextRound}
+                                                disabled={isLoading}
+                                                className="px-6 py-2.5 bg-spotify-green rounded-full text-spotify-black text-sm font-bold hover:bg-spotify-green-light hover:scale-105 transition-all cursor-pointer glow-green disabled:opacity-40"
+                                            >
+                                                {isLoading ? "Loading..." : "Next Round →"}
+                                            </button>
+                                            <button
+                                                onClick={() => router.push(`/scorecard/${sessionId}`)}
+                                                className="px-6 py-2.5 rounded-full text-sm font-medium text-spotify-subtext border border-white/10 hover:border-white/20 hover:text-white transition-all cursor-pointer"
+                                            >
+                                                End & View Scorecard
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
+
+                    {/* Input (hidden when round is complete) */}
+                    {!roundComplete && !allComplete && (
+                        <div className="p-4 border-t border-white/5">
+                            <div className="flex gap-3 glass-strong rounded-2xl p-2">
+                                <textarea
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder="Type your response..."
+                                    rows={2}
+                                    className="flex-1 bg-transparent px-4 py-2 text-sm resize-none focus:outline-none placeholder:text-spotify-muted"
+                                />
+                                <button
+                                    onClick={sendMessage}
+                                    disabled={isLoading || !input.trim()}
+                                    className="self-end px-5 py-2.5 bg-spotify-green rounded-xl text-spotify-black text-sm font-bold disabled:opacity-30 hover:bg-spotify-green-light transition-all cursor-pointer"
+                                >
+                                    Send
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Code editor panel (coding round only) */}
@@ -231,7 +333,7 @@ export default function InterviewPage() {
                             <span className="text-sm text-spotify-subtext font-medium">Solution Editor</span>
                             <button
                                 onClick={submitCode}
-                                disabled={isLoading}
+                                disabled={isLoading || roundComplete}
                                 className="px-5 py-2 bg-spotify-green rounded-full text-spotify-black text-xs font-bold hover:bg-spotify-green-light transition-all disabled:opacity-30 cursor-pointer glow-green"
                             >
                                 Submit Code
@@ -255,6 +357,7 @@ export default function InterviewPage() {
                                     renderLineHighlight: "gutter",
                                     cursorBlinking: "smooth",
                                     smoothScrolling: true,
+                                    readOnly: roundComplete,
                                 }}
                             />
                         </div>
