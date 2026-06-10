@@ -220,11 +220,11 @@ Open http://localhost:3000
 
 | Landing Page | Persona Selection |
 |:---:|:---:|
-| ![Landing](images/01.png) | ![Select](images/02.png) |
+| ![Landing](IMAGES/01.png) | ![Select](IMAGES/02.png) |
 
 | Interview (Chat + Voice) | Scorecard |
 |:---:|:---:|
-| ![Interview](images/03.png) | ![Scorecard](images/04.png) |
+| ![Interview](IMAGES/03.png) | ![Scorecard](IMAGES/04.png) |
 
 ### Platform Flow
 
