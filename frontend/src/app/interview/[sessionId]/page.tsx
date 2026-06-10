@@ -3,6 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import VoiceWaveform from "@/components/VoiceWaveform";
+import WebcamFeed from "@/components/WebcamFeed";
+import { useTextToSpeech, useSpeechToText } from "@/hooks/useSpeech";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
     ssr: false,
@@ -28,6 +31,18 @@ export default function InterviewPage() {
     const [allComplete, setAllComplete] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
+    // Voice
+    const { speak, stop: stopSpeaking, isSpeaking } = useTextToSpeech();
+    const { startListening, stopListening, isListening, transcript, resetTranscript } = useSpeechToText();
+    const [voiceEnabled, setVoiceEnabled] = useState(true);
+
+    // Sync transcript to input
+    useEffect(() => {
+        if (transcript) {
+            setInput(transcript);
+        }
+    }, [transcript]);
+
     useEffect(() => {
         initSession();
     }, []);
@@ -51,13 +66,11 @@ export default function InterviewPage() {
             setShowEditor(data.round_type === "coding");
             if (data.is_complete) setAllComplete(true);
             setMessages([{ role: "agent", content: data.reply }]);
+            if (voiceEnabled) speak(data.reply);
         } catch (error) {
             console.error("Failed to init session:", error);
             setMessages([
-                {
-                    role: "agent",
-                    content: "Failed to connect to the server. Please try again.",
-                },
+                { role: "agent", content: "Failed to connect to the server. Please try again." },
             ]);
         }
     };
@@ -65,8 +78,13 @@ export default function InterviewPage() {
     const sendMessage = async () => {
         if (!input.trim() || isLoading) return;
 
+        // Stop listening if active
+        if (isListening) stopListening();
+        stopSpeaking();
+
         const userMessage = input.trim();
         setInput("");
+        resetTranscript();
         setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
         setIsLoading(true);
 
@@ -85,6 +103,7 @@ export default function InterviewPage() {
             setShowEditor(data.round_type === "coding");
             if (data.is_complete) setAllComplete(true);
             setMessages((prev) => [...prev, { role: "agent", content: data.reply }]);
+            if (voiceEnabled) speak(data.reply);
         } catch (error) {
             console.error("Failed to send message:", error);
             setMessages((prev) => [
@@ -98,15 +117,12 @@ export default function InterviewPage() {
 
     const submitCode = async () => {
         setIsLoading(true);
+        stopSpeaking();
         try {
             await fetch("http://localhost:8000/api/interview/submit-code", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    session_id: sessionId,
-                    code,
-                    language: "python",
-                }),
+                body: JSON.stringify({ session_id: sessionId, code, language: "python" }),
             });
 
             const res = await fetch("http://localhost:8000/api/interview/chat", {
@@ -124,6 +140,7 @@ export default function InterviewPage() {
                 { role: "user", content: "📤 Code submitted for evaluation" },
                 { role: "agent", content: data.reply },
             ]);
+            if (voiceEnabled) speak(data.reply);
             setRoundComplete(true);
         } catch (error) {
             console.error("Failed to submit code:", error);
@@ -133,11 +150,13 @@ export default function InterviewPage() {
     };
 
     const finishRound = () => {
+        stopSpeaking();
         setRoundComplete(true);
     };
 
     const goToNextRound = async () => {
         setIsLoading(true);
+        stopSpeaking();
         try {
             const res = await fetch(`http://localhost:8000/api/interview/next-round?session_id=${sessionId}`, {
                 method: "POST",
@@ -146,34 +165,38 @@ export default function InterviewPage() {
 
             if (data.status === "all_rounds_complete") {
                 setAllComplete(true);
-                setMessages((prev) => [
-                    ...prev,
-                    { role: "agent", content: "🎉 All rounds completed! Let's check your scorecard." },
-                ]);
+                const msg = "🎉 All rounds completed! Let's check your scorecard.";
+                setMessages((prev) => [...prev, { role: "agent", content: msg }]);
+                if (voiceEnabled) speak("All rounds completed! Let's check your scorecard.");
             } else {
-                // Reset state for new round
                 setRoundComplete(false);
                 setMessages([]);
                 setCode("# Write your solution here\n");
 
-                // Init the new round
                 const chatRes = await fetch("http://localhost:8000/api/interview/chat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        session_id: sessionId,
-                        message: "Hello, I'm ready for the next round.",
-                    }),
+                    body: JSON.stringify({ session_id: sessionId, message: "Hello, I'm ready for the next round." }),
                 });
                 const chatData = await chatRes.json();
                 setCurrentRound(chatData.round_type);
                 setShowEditor(chatData.round_type === "coding");
                 setMessages([{ role: "agent", content: chatData.reply }]);
+                if (voiceEnabled) speak(chatData.reply);
             }
         } catch (error) {
             console.error("Failed to advance round:", error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const toggleMic = () => {
+        if (isListening) {
+            stopListening();
+        } else {
+            resetTranscript();
+            startListening();
         }
     };
 
@@ -203,11 +226,20 @@ export default function InterviewPage() {
                         <span className="text-gradient">HireInt</span><span className="text-white">OS</span>
                     </h1>
                 </div>
-                <span className={`text-xs px-3 py-1.5 rounded-full border ${currentConfig.color}`}>
-                    {currentConfig.label}
-                </span>
                 <div className="flex items-center gap-3">
-                    {/* Finish Round button */}
+                    <span className={`text-xs px-3 py-1.5 rounded-full border ${currentConfig.color}`}>
+                        {currentConfig.label}
+                    </span>
+                    {/* Voice toggle */}
+                    <button
+                        onClick={() => { setVoiceEnabled(!voiceEnabled); if (isSpeaking) stopSpeaking(); }}
+                        className={`text-xs px-3 py-1.5 rounded-full border transition-all cursor-pointer ${voiceEnabled ? "border-spotify-green/30 text-spotify-green bg-spotify-green/5" : "border-white/10 text-spotify-muted"}`}
+                        title={voiceEnabled ? "Voice ON" : "Voice OFF"}
+                    >
+                        {voiceEnabled ? "🔊" : "🔇"}
+                    </button>
+                </div>
+                <div className="flex items-center gap-3">
                     {!roundComplete && !allComplete && currentRound !== "loading" && (
                         <button
                             onClick={finishRound}
@@ -229,6 +261,19 @@ export default function InterviewPage() {
             <div className="flex-1 flex overflow-hidden">
                 {/* Chat panel */}
                 <div className={`flex flex-col ${showEditor ? "w-1/2 border-r border-white/5" : "w-full max-w-3xl mx-auto"}`}>
+                    {/* Webcam + Agent speaking indicator */}
+                    <div className="flex items-center justify-between px-6 pt-4">
+                        <div className="flex items-center gap-3">
+                            {isSpeaking && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full glass text-xs text-spotify-green">
+                                    <VoiceWaveform isActive={isSpeaking} />
+                                    <span>Agent speaking...</span>
+                                </div>
+                            )}
+                        </div>
+                        <WebcamFeed />
+                    </div>
+
                     {/* Messages */}
                     <div className="flex-1 overflow-y-auto p-6 space-y-4">
                         {messages.map((msg, i) => (
@@ -263,7 +308,7 @@ export default function InterviewPage() {
                         <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Next Round / Scorecard transition panel */}
+                    {/* Next Round / Scorecard transition */}
                     {(roundComplete || allComplete) && (
                         <div className="p-4 border-t border-white/5">
                             <div className="glass-strong rounded-2xl p-5 text-center animate-slide-up">
@@ -302,15 +347,36 @@ export default function InterviewPage() {
                         </div>
                     )}
 
-                    {/* Input (hidden when round is complete) */}
+                    {/* Input area (typing + mic) */}
                     {!roundComplete && !allComplete && (
                         <div className="p-4 border-t border-white/5">
+                            {/* Listening indicator */}
+                            {isListening && (
+                                <div className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-full glass text-xs text-red-400 w-fit">
+                                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                                    Listening... speak now
+                                </div>
+                            )}
                             <div className="flex gap-3 glass-strong rounded-2xl p-2">
+                                {/* Mic button */}
+                                <button
+                                    onClick={toggleMic}
+                                    className={`self-end p-2.5 rounded-xl transition-all cursor-pointer ${isListening
+                                        ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                        : "bg-white/5 text-spotify-muted hover:text-white hover:bg-white/10 border border-white/5"
+                                        }`}
+                                    title={isListening ? "Stop listening" : "Start speaking"}
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                                    </svg>
+                                </button>
+
                                 <textarea
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    placeholder="Type your response..."
+                                    placeholder={isListening ? "Listening..." : "Type or speak your response..."}
                                     rows={2}
                                     className="flex-1 bg-transparent px-4 py-2 text-sm resize-none focus:outline-none placeholder:text-spotify-muted"
                                 />
@@ -326,7 +392,7 @@ export default function InterviewPage() {
                     )}
                 </div>
 
-                {/* Code editor panel (coding round only) */}
+                {/* Code editor panel */}
                 {showEditor && (
                     <div className="w-1/2 flex flex-col">
                         <div className="flex items-center justify-between px-5 py-3 border-b border-white/5 glass">
