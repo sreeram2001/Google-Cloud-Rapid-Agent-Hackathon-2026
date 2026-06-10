@@ -216,7 +216,17 @@ Open http://localhost:3000
 
 ## Demo
 
-The platform flow:
+### Screenshots
+
+| Landing Page | Persona Selection |
+|:---:|:---:|
+| ![Landing](images/01.png) | ![Select](images/02.png) |
+
+| Interview (Chat + Voice) | Scorecard |
+|:---:|:---:|
+| ![Interview](images/03.png) | ![Scorecard](images/04.png) |
+
+### Platform Flow
 
 1. **Landing** → Get Started
 2. **Select** → Choose interview rounds + upload resume/JD (PDF)
