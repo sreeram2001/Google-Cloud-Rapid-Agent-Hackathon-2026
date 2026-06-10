@@ -222,7 +222,7 @@ Open http://localhost:3000
 |:---:|:---:|
 | ![Landing](IMAGES/01.png) | ![Select](IMAGES/02.png) |
 
-| Interview (Chat + Voice) | Scorecard |
+| Interview (Chat + Voice) | Coding Round |
 |:---:|:---:|
 | ![Interview](IMAGES/03.png) | ![Scorecard](IMAGES/04.png) |
 
@@ -237,7 +237,7 @@ Open http://localhost:3000
 
 ## Team
 
-Built by [sreeram2001](https://github.com/sreeram2001) for the Google Cloud Rapid Agent Hackathon 2026.
+Built by [sreeram2001](https://github.com/sreeram2001) and [charusnehalr](https://github.com/charusnehalr) for the Google Cloud Rapid Agent Hackathon 2026.
 
 ## License
 
