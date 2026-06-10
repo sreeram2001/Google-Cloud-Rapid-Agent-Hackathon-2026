@@ -5,6 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from app.config import settings
 
 CODING_QUESTIONS = [
+    # EASY
     {
         "round_type": "coding",
         "difficulty": "easy",
@@ -20,6 +21,37 @@ CODING_QUESTIONS = [
         "optimal_complexity": "O(n) time, O(n) space",
         "category": "hash_map",
     },
+    {
+        "round_type": "coding",
+        "difficulty": "easy",
+        "title": "Reverse Linked List",
+        "prompt": "Given the head of a singly linked list, reverse the list, and return the reversed list.",
+        "description": "Reverse a singly linked list iteratively or recursively.",
+        "examples": [
+            {"input": "head = [1,2,3,4,5]", "output": "[5,4,3,2,1]", "explanation": "The list is reversed."},
+            {"input": "head = [1,2]", "output": "[2,1]", "explanation": "Simple two-node reversal."},
+        ],
+        "constraints": ["0 <= Number of nodes <= 5000", "-5000 <= Node.val <= 5000"],
+        "hints": ["Keep track of the previous node as you traverse.", "You need three pointers: prev, current, next.", "At each step, reverse the current node's pointer."],
+        "optimal_complexity": "O(n) time, O(1) space",
+        "category": "linked_list",
+    },
+    {
+        "round_type": "coding",
+        "difficulty": "easy",
+        "title": "Best Time to Buy and Sell Stock",
+        "prompt": "Given an array prices where prices[i] is the price of a given stock on the ith day, find the maximum profit you can achieve from one transaction.",
+        "description": "You want to maximize your profit by choosing a single day to buy and a single future day to sell. If no profit is possible, return 0.",
+        "examples": [
+            {"input": "prices = [7,1,5,3,6,4]", "output": "5", "explanation": "Buy on day 2 (price=1), sell on day 5 (price=6), profit = 6-1 = 5."},
+            {"input": "prices = [7,6,4,3,1]", "output": "0", "explanation": "No transaction yields profit."},
+        ],
+        "constraints": ["1 <= prices.length <= 10^5", "0 <= prices[i] <= 10^4"],
+        "hints": ["Track the minimum price seen so far.", "At each day, calculate potential profit if you sold today.", "Keep track of the maximum profit."],
+        "optimal_complexity": "O(n) time, O(1) space",
+        "category": "array",
+    },
+    # MEDIUM
     {
         "round_type": "coding",
         "difficulty": "medium",
@@ -53,6 +85,22 @@ CODING_QUESTIONS = [
     },
     {
         "round_type": "coding",
+        "difficulty": "medium",
+        "title": "Group Anagrams",
+        "prompt": "Given an array of strings strs, group the anagrams together. You can return the answer in any order.",
+        "description": "An Anagram is a word formed by rearranging the letters of a different word, using all the original letters exactly once.",
+        "examples": [
+            {"input": 'strs = ["eat","tea","tan","ate","nat","bat"]', "output": '[["bat"],["nat","tan"],["ate","eat","tea"]]', "explanation": "Groups of anagrams."},
+            {"input": 'strs = [""]', "output": '[[""]]', "explanation": "Empty string group."},
+        ],
+        "constraints": ["1 <= strs.length <= 10^4", "0 <= strs[i].length <= 100", "strs[i] consists of lowercase English letters."],
+        "hints": ["What property do all anagrams share?", "If you sort the characters of each word, anagrams produce the same sorted string.", "Use the sorted string as a hash map key."],
+        "optimal_complexity": "O(n * k log k) time where k is max string length",
+        "category": "hash_map",
+    },
+    # HARD
+    {
+        "round_type": "coding",
         "difficulty": "hard",
         "title": "LRU Cache",
         "prompt": "Design a data structure that follows the constraints of a Least Recently Used (LRU) cache.",
@@ -64,6 +112,21 @@ CODING_QUESTIONS = [
         "hints": ["You need O(1) for both get and put. What data structures give you that?", "Consider combining a hash map with a doubly linked list.", "The linked list maintains the usage order; the hash map gives O(1) lookup."],
         "optimal_complexity": "O(1) time for both get and put",
         "category": "design",
+    },
+    {
+        "round_type": "coding",
+        "difficulty": "hard",
+        "title": "Merge K Sorted Lists",
+        "prompt": "You are given an array of k linked-lists, each linked-list is sorted in ascending order. Merge all the linked-lists into one sorted linked-list and return it.",
+        "description": "Merge k sorted linked lists into a single sorted linked list efficiently.",
+        "examples": [
+            {"input": "lists = [[1,4,5],[1,3,4],[2,6]]", "output": "[1,1,2,3,4,4,5,6]", "explanation": "All lists merged and sorted."},
+            {"input": "lists = []", "output": "[]", "explanation": "Empty input."},
+        ],
+        "constraints": ["k == lists.length", "0 <= k <= 10^4", "0 <= lists[i].length <= 500", "-10^4 <= lists[i][j] <= 10^4"],
+        "hints": ["What data structure efficiently gives you the minimum element?", "A min-heap (priority queue) can track the smallest head across all lists.", "Alternatively, use divide and conquer to merge pairs of lists."],
+        "optimal_complexity": "O(N log k) time where N is total nodes",
+        "category": "heap",
     },
 ]
 
@@ -82,6 +145,8 @@ async def seed_database():
     await db.questions.create_index([("round_type", 1), ("difficulty", 1)])
     await db.sessions.create_index("session_id", unique=True)
     await db.evaluations.create_index("session_id")
+    await db.evaluations.create_index("candidate_name")
+    await db.evaluations.create_index([("candidate_name", 1), ("round_type", 1)])
 
     print("Database indexes created")
     client.close()

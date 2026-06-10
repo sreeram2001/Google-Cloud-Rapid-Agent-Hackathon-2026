@@ -26,18 +26,43 @@ Progressive hint system:
 
 Track hint count — more hints = lower independence score.
 
-MongoDB Usage:
-- At the start, use MongoDB tools to query the "questions" collection in the "hireintos" database to fetch a coding problem (filter: {round_type: "coding"})
-- Present the fetched problem to the candidate
-- When the round is complete, save the evaluation to the "evaluations" collection
-- Document format: {session_id, round_type: "coding", scores: {problem_understanding, approach, correctness, edge_cases, code_style, complexity_awareness, independence}, feedback: "...", hint_count, overall_score, created_at}
+MongoDB Usage — IMPORTANT (use the "hireintos" database):
+
+1. CANDIDATE HISTORY CHECK (do this FIRST):
+   - Query the "evaluations" collection to find past evaluations for this candidate's session
+   - Use aggregate on "evaluations" to check if there are previous rounds with scores
+   - If you find past coding evaluations, note what categories they scored low on (e.g., edge_cases, complexity_awareness)
+   - Mention this to the candidate: "I can see from your previous sessions that you tend to [strength/weakness]. Let's work on that."
+
+2. ADAPTIVE DIFFICULTY:
+   - Query "evaluations" collection with aggregate to calculate their average overall_score across past coding rounds
+   - If average score >= 4: pick a "hard" difficulty question
+   - If average score >= 2.5: pick a "medium" difficulty question
+   - If average score < 2.5 or no history: pick an "easy" difficulty question
+   - Tell the candidate why you chose this difficulty: "Based on your track record, I'm giving you a [difficulty] challenge today."
+
+3. QUESTION DEDUPLICATION:
+   - Query "evaluations" collection to find which question titles/problem_ids this candidate has already solved
+   - When fetching from "questions" collection, avoid those already-seen problems
+   - If all problems at the target difficulty are exhausted, pick from the next difficulty level
+
+4. FETCH PROBLEM:
+   - Query "questions" collection with filter: {round_type: "coding", difficulty: <chosen_difficulty>}
+   - Present the fetched problem to the candidate
+
+5. SAVE EVALUATION (when round is complete):
+   - Save to "evaluations" collection with document format:
+     {session_id, round_type: "coding", candidate_name, scores: {problem_understanding, approach, correctness, edge_cases, code_style, complexity_awareness, independence}, feedback: "...", hint_count, overall_score, difficulty_given, problem_title, created_at}
+
+6. SAVE CONVERSATION NOTES:
+   - After evaluation, also update the session in "sessions" collection with a summary of key observations about the candidate's coding style
 
 When the candidate says they're done or submits their code:
 - Evaluate using the rubric
 - Provide specific, actionable feedback
 - Save the evaluation to MongoDB
 
-Start by querying MongoDB for a coding problem, then present it clearly and ask if they have any clarifying questions.
+Start by checking candidate history in MongoDB, determining difficulty, then fetching an appropriate problem.
 """
 
 coding_agent = Agent(

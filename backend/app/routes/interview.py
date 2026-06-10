@@ -27,18 +27,20 @@ def build_context_message(session_doc: dict, round_type: str) -> str:
     """Build a context preamble from resume + JD for the agent's first message."""
     resume = session_doc.get("resume_text", "")
     jd = session_doc.get("job_description", "")
+    candidate_name = session_doc.get("candidate_name", "Demo User")
+    session_id = session_doc.get("session_id", "")
 
-    context_parts = []
+    context_parts = [
+        f"[SESSION INFO]:\n- Session ID: {session_id}\n- Candidate Name: {candidate_name}\n- Current Round: {round_type}"
+    ]
     if resume:
         context_parts.append(f"[CANDIDATE RESUME]:\n{resume}")
     if jd:
         context_parts.append(f"[JOB DESCRIPTION]:\n{jd}")
 
-    if not context_parts:
-        return ""
-
     return (
         "Use the following context to tailor your interview questions. "
+        "The session_id and candidate_name can be used to query MongoDB for candidate history. "
         "Ask questions relevant to the candidate's experience and the target role. "
         "Do NOT repeat the resume back to the candidate.\n\n"
         + "\n\n".join(context_parts)
