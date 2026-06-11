@@ -344,11 +344,11 @@ gcloud run deploy hireintos-frontend \
 
 ### Screenshots
 
-| Landing Page | Auth (Login/Signup) |
+| Landing Page | Interview Persona Selection |
 |:---:|:---:|
 | ![Landing](IMAGES/1.png) | ![Auth](IMAGES/2.png) |
 
-| Persona Selection | Voice-First Interview |
+| Live Interview | Interview Results |
 |:---:|:---:|
 | ![Select](IMAGES/3.png) | ![Interview](IMAGES/4.png) |
 
