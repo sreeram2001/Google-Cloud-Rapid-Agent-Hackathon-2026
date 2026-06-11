@@ -1,0 +1,7 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/the-name-499107-d3/hireintos/frontend:latest', '-f', 'Dockerfile.frontend', '--build-arg', 'NEXT_PUBLIC_API_URL=https://hireintos-backend-856672744274.us-central1.run.app', '.']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/the-name-499107-d3/hireintos/frontend:latest']
+images:
+  - 'us-central1-docker.pkg.dev/the-name-499107-d3/hireintos/frontend:latest'

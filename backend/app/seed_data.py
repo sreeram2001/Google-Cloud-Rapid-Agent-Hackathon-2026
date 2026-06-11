@@ -144,9 +144,13 @@ async def seed_database():
     # Create indexes
     await db.questions.create_index([("round_type", 1), ("difficulty", 1)])
     await db.sessions.create_index("session_id", unique=True)
+    await db.sessions.create_index("email")
+    await db.sessions.create_index("created_at")
     await db.evaluations.create_index("session_id")
     await db.evaluations.create_index("candidate_name")
     await db.evaluations.create_index([("candidate_name", 1), ("round_type", 1)])
+    await db.evaluations.create_index([("session_id", 1), ("round_type", 1)])
+    await db.users.create_index("email", unique=True)
 
     print("Database indexes created")
     client.close()

@@ -4,11 +4,14 @@
 
 Built for the **Google Cloud Rapid Agent Hackathon 2026** · MongoDB Partner Track
 
+**Live Demo:** https://hireintos-frontend-856672744274.us-central1.run.app  
+**Backend API:** https://hireintos-backend-856672744274.us-central1.run.app
+
 ---
 
 ## What It Does
 
-HireIntOS simulates a real multi-round hiring process with 4 specialized AI interviewer agents. Upload your resume and target job description — the agents generate personalized questions, remember your past sessions, and adapt difficulty based on your performance.
+HireIntOS simulates a real multi-round hiring process with 4 specialized AI interviewer agents. Sign up, upload your resume and target job description — the agents generate personalized questions, remember your past sessions, and adapt difficulty based on your performance.
 
 ### The 4 AI Interviewers
 
@@ -21,30 +24,123 @@ HireIntOS simulates a real multi-round hiring process with 4 specialized AI inte
 
 ### Key Features
 
+- **User authentication** — Sign up / login with email + password, all sessions linked to your account
 - **Resume-aware** — Agents generate questions from your resume + job description
-- **Voice interaction** — Speak your answers (STT) and hear the agent's questions (TTS)
-- **Webcam support** — Video call feel with your camera feed
+- **Voice-first interview UI** — Circular waveform animation, auto-listen after agent speaks
+- **Webcam + proctoring** — MediaPipe face mesh eye tracking detects when you look away, beeps as warning
 - **Hints-only coding round** — AI guides you with progressive hints, never reveals solutions
-- **One-click hint button** — Request hints without typing during coding rounds
 - **Monaco code editor** — Full IDE experience for the coding round
 - **Multi-dimensional scorecard** — Rubric-based evaluation per round
-- **Candidate memory** — Remembers past sessions, tracks growth over time
+- **Dashboard** — Session history, score trends, strengths/weaknesses, progress over time
+- **Candidate memory** — Remembers past sessions, tracks growth across interviews
 - **Adaptive difficulty** — Adjusts question difficulty based on past performance
 - **PDF upload** — Upload resume and JD as PDFs
+- **Session timer** — Tracks interview duration
 
 ---
 
 ## MongoDB MCP Server Integration
 
-This project uses the [MongoDB MCP Server](https://github.com/mongodb-js/mongodb-mcp-server) as the primary tool interface between agents and the database. Agents interact with MongoDB directly through MCP for:
+This project uses the [MongoDB MCP Server](https://github.com/mongodb-js/mongodb-mcp-server) as the primary tool interface between AI agents and the database — making MongoDB Atlas the **persistent memory layer** for all agentic workloads.
 
-- **Fetching coding problems** — Queries `questions` collection with difficulty filters
-- **Candidate history lookup** — Aggregates past evaluations to understand strengths/weaknesses
-- **Adaptive difficulty** — Calculates average scores to determine question difficulty
-- **Question deduplication** — Checks previously solved problems to avoid repeats
-- **Saving evaluations** — Writes detailed rubric scores and feedback
-- **Growth tracking** — Compares current vs past performance, notes improvements
-- **Session notes** — Saves agent observations for future reference
+### Why MongoDB is Essential (Not Just Storage)
+
+Unlike a simple CRUD backend, our agents **autonomously query and write to MongoDB during conversations** via the MCP Server. MongoDB Atlas serves as the unified operational foundation where:
+
+1. **Agents reason over historical data** — Before asking questions, agents query past evaluations to understand candidate strengths/weaknesses
+2. **Agents adapt in real-time** — Aggregation pipelines calculate average scores to dynamically adjust difficulty
+3. **Agents deduplicate questions** — Queries prevent repeating problems across sessions
+4. **Agents persist their own evaluations** — At round end, agents write structured rubric scores directly to MongoDB
+5. **Cross-session memory** — Agents reference performance from previous sessions, noting improvement trends
+
+### MCP Tools Used by Agents
+
+| MCP Tool | Agent Usage |
+|----------|-------------|
+| `find` | Fetch coding questions by difficulty, lookup user sessions, check candidate history |
+| `aggregate` | Calculate avg scores across sessions, identify weak dimensions, compute adaptive difficulty |
+| `insertMany` | Save rubric evaluations, create session records |
+| `updateMany` | Append conversation messages, save proctoring data, update session status |
+| `count` | Check how many problems candidate has solved, verify evaluation existence |
+| `listCollections` | Agent discovery of available data collections |
+
+### Data Model (4 Collections)
+
+| Collection | Purpose | Indexed Fields |
+|-----------|---------|----------------|
+| `users` | Authentication + session linkage | `email` (unique) |
+| `sessions` | Full interview state — rounds, resume, JD, messages, proctoring | `session_id` (unique), `email`, `created_at` |
+| `evaluations` | Per-round rubric scores written by agents | `session_id`, `candidate_name`, `(session_id, round_type)`, `(candidate_name, round_type)` |
+| `questions` | Coding problem bank (seeded) | `(round_type, difficulty)` |
+
+### Aggregation Pipeline Examples
+
+Agents execute these aggregations via MCP at runtime:
+
+```javascript
+// Calculate adaptive difficulty (agent runs this before picking a question)
+db.evaluations.aggregate([
+  { $match: { candidate_name: "Sreeram", round_type: "coding" } },
+  { $group: { _id: null, avgScore: { $avg: "$overall_score" } } }
+])
+// Result: avgScore >= 4 → hard, >= 2.5 → medium, else → easy
+
+// Identify weak dimensions for targeted questioning
+db.evaluations.aggregate([
+  { $match: { candidate_name: "Sreeram" } },
+  { $unwind: { path: "$scores" } },
+  { $group: { _id: "$scores.dimension", avg: { $avg: "$scores.value" } } },
+  { $sort: { avg: 1 } },
+  { $limit: 3 }
+])
+
+// Progress tracking across sessions
+db.evaluations.aggregate([
+  { $match: { session_id: { $in: userSessionIds } } },
+  { $sort: { created_at: 1 } },
+  { $group: { _id: "$round_type", scores: { $push: "$overall_score" } } }
+])
+```
+
+### Document Structure Examples
+
+```javascript
+// Evaluation document (written by agent via MCP)
+{
+  session_id: "uuid-123",
+  round_type: "technical",
+  candidate_name: "Sreeram",
+  scores: {
+    depth_of_knowledge: 4,
+    system_design: 3,
+    problem_decomposition: 4,
+    tradeoff_analysis: 3,
+    communication: 5
+  },
+  feedback: "Strong communicator with good system design intuition...",
+  overall_score: 3.8,
+  topics_covered: ["distributed systems", "caching", "load balancing"],
+  difficulty_level: "medium",
+  proctoring_warnings: 2,
+  created_at: ISODate("2026-06-11T07:00:00Z")
+}
+
+// Session document (persistent memory)
+{
+  session_id: "uuid-123",
+  candidate_name: "Sreeram",
+  email: "sreeram@example.com",
+  rounds: ["hr", "technical", "coding"],
+  current_round_index: 1,
+  resume_text: "...",
+  job_description: "...",
+  messages: [
+    { round: "hr", user: "...", agent: "...", timestamp: ISODate() }
+  ],
+  proctoring: { hr: { warning_count: 0 }, technical: { warning_count: 2 } },
+  created_at: ISODate("2026-06-11T06:30:00Z")
+}
+```
 
 ---
 
@@ -55,17 +151,23 @@ This project uses the [MongoDB MCP Server](https://github.com/mongodb-js/mongodb
 │                        FRONTEND                                      │
 │                 Next.js 15 + React 19 + Tailwind v4                 │
 │                                                                      │
-│  ┌──────────┐  ┌──────────────┐  ┌───────────┐  ┌──────────────┐  │
-│  │ Landing  │→ │Persona Select│→ │ Interview │→ │  Scorecard   │  │
-│  │  Page    │  │ + PDF Upload │  │   Page    │  │    Page      │  │
-│  └──────────┘  └──────────────┘  └───────────┘  └──────────────┘  │
-│                                         │                            │
-│                          ┌──────────────┼──────────────┐            │
-│                          │              │              │            │
-│                    ┌─────▼────┐  ┌─────▼────┐  ┌─────▼────┐      │
-│                    │  Voice   │  │  Monaco  │  │  Webcam  │      │
-│                    │ TTS/STT  │  │  Editor  │  │   Feed   │      │
-│                    └──────────┘  └──────────┘  └──────────┘      │
+│  ┌──────────┐  ┌──────┐  ┌──────────────┐  ┌───────────┐          │
+│  │ Landing  │→ │ Auth │→ │Persona Select│→ │ Interview │          │
+│  │  Page    │  │ Page │  │ + PDF Upload │  │   Page    │          │
+│  └──────────┘  └──────┘  └──────────────┘  └─────┬─────┘          │
+│                                                    │                 │
+│                              ┌─────────────────────┼──────────┐     │
+│                              │                     │          │     │
+│                        ┌─────▼────┐  ┌──────▼─────┐  ┌──────▼──┐  │
+│                        │ Circular │  │   Monaco   │  │ Webcam  │  │
+│                        │ Waveform │  │   Editor   │  │+Proctor │  │
+│                        │  + Voice │  │ (Coding)   │  │MediaPipe│  │
+│                        └──────────┘  └────────────┘  └─────────┘  │
+│                                                                      │
+│  ┌──────────────┐  ┌───────────┐                                    │
+│  │  Dashboard   │  │ Scorecard │                                    │
+│  │ History/Stats│  │  Results  │                                    │
+│  └──────────────┘  └───────────┘                                    │
 └────────────────────────────┬────────────────────────────────────────┘
                              │ REST API (JSON)
                              ▼
@@ -75,11 +177,13 @@ This project uses the [MongoDB MCP Server](https://github.com/mongodb-js/mongodb
 │                                                                      │
 │  ┌────────────────────────────────────────────────────────────────┐ │
 │  │                    API Routes                                   │ │
-│  │  /api/sessions/start    → Create session + store resume/JD     │ │
-│  │  /api/interview/chat    → Send message to current agent        │ │
-│  │  /api/interview/next    → Advance to next round                │ │
-│  │  /api/upload/parse-pdf  → Extract text from PDF                │ │
-│  │  /api/sessions/scorecard → Get evaluation results              │ │
+│  │  /api/auth/signup|login  → User authentication                 │ │
+│  │  /api/sessions/start     → Create session + store resume/JD    │ │
+│  │  /api/interview/chat     → Send message to current agent       │ │
+│  │  /api/interview/next     → Advance to next round               │ │
+│  │  /api/dashboard/history  → User session history                │ │
+│  │  /api/dashboard/progress → Score trends + analytics            │ │
+│  │  /api/upload/parse-pdf   → Extract text from PDF               │ │
 │  └────────────────────────────────────────────────────────────────┘ │
 │                             │                                        │
 │  ┌──────────────────────────▼─────────────────────────────────────┐ │
@@ -120,47 +224,22 @@ This project uses the [MongoDB MCP Server](https://github.com/mongodb-js/mongodb
 │                      MongoDB Atlas (Cloud)                            │
 │                                                                      │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
-│  │   questions       │  │    sessions       │  │   evaluations    │  │
-│  │ - round_type      │  │ - session_id      │  │ - session_id     │  │
-│  │ - difficulty      │  │ - candidate_name  │  │ - round_type     │  │
-│  │ - title           │  │ - rounds[]        │  │ - scores{}       │  │
-│  │ - prompt          │  │ - resume_text     │  │ - feedback       │  │
-│  │ - examples[]      │  │ - job_description │  │ - overall_score  │  │
-│  │ - constraints[]   │  │ - messages[]      │  │ - hint_count     │  │
-│  │ - hints[]         │  │ - created_at      │  │ - created_at     │  │
-│  └──────────────────┘  └──────────────────┘  └──────────────────┘  │
+│  │    users          │  │    sessions       │  │   evaluations    │  │
+│  │ - name            │  │ - session_id      │  │ - session_id     │  │
+│  │ - email (unique)  │  │ - candidate_name  │  │ - round_type     │  │
+│  │ - password (hash) │  │ - email           │  │ - scores{}       │  │
+│  │ - sessions[]      │  │ - rounds[]        │  │ - feedback       │  │
+│  │ - created_at      │  │ - resume_text     │  │ - overall_score  │  │
+│  │                    │  │ - job_description │  │ - hint_count     │  │
+│  │  ┌────────────┐   │  │ - messages[]      │  │ - proctoring     │  │
+│  │  │ questions   │   │  │ - proctoring{}    │  │ - created_at     │  │
+│  │  │ - title     │   │  │ - created_at      │  │                  │  │
+│  │  │ - difficulty│   │  └──────────────────┘  └──────────────────┘  │
+│  │  │ - hints[]   │   │                                              │
+│  │  │ - examples[]│   │                                              │
+│  │  └────────────┘   │                                              │
+│  └──────────────────┘                                                │
 └─────────────────────────────────────────────────────────────────────┘
-```
-
-### Data Flow (Single Message)
-
-```
-User speaks/types → Frontend → POST /api/interview/chat
-                                       │
-                    ┌──────────────────▼──────────────────────┐
-                    │ 1. Fetch session from MongoDB (motor)    │
-                    │ 2. Determine current round               │
-                    │ 3. Build context (resume + JD + session) │
-                    │ 4. Send to ADK Agent                     │
-                    └──────────────────┬──────────────────────┘
-                                       │
-                    ┌──────────────────▼──────────────────────┐
-                    │ ADK Agent (e.g., Technical Agent)        │
-                    │                                          │
-                    │ • Receives message + context             │
-                    │ • May call MongoDB MCP tools:            │
-                    │   - find() → check candidate history     │
-                    │   - aggregate() → calc avg scores        │
-                    │   - insert-many() → save evaluation      │
-                    │ • Generates personalized response        │
-                    └──────────────────┬──────────────────────┘
-                                       │
-                    ┌──────────────────▼──────────────────────┐
-                    │ Response returned to frontend            │
-                    │ • Displayed in chat                      │
-                    │ • Read aloud via TTS                     │
-                    │ • Saved to session messages in MongoDB   │
-                    └─────────────────────────────────────────┘
 ```
 
 ---
@@ -183,7 +262,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env  # Add your credentials
 python -m app.seed_data  # Seed coding questions
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
 ```
 
 ### Frontend
@@ -196,6 +275,40 @@ npm run dev
 
 Open http://localhost:3000
 
+### Environment Variables
+
+```env
+GOOGLE_API_KEY=your_gemini_api_key
+MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/
+MONGODB_DATABASE=hireintos
+```
+
+---
+
+## Deployment (Google Cloud Run)
+
+Both services are deployed on Cloud Run:
+
+```bash
+# Build and push backend
+gcloud builds submit --config=cloudbuild-backend.yaml .
+
+# Deploy backend
+gcloud run deploy hireintos-backend \
+  --image us-central1-docker.pkg.dev/PROJECT_ID/hireintos/backend:latest \
+  --region us-central1 --allow-unauthenticated \
+  --set-env-vars "GOOGLE_API_KEY=...,MONGODB_URI=...,MONGODB_DATABASE=hireintos" \
+  --memory 1Gi --timeout 300 --port 8000
+
+# Build and push frontend
+gcloud builds submit --config=cloudbuild-frontend.yaml .
+
+# Deploy frontend
+gcloud run deploy hireintos-frontend \
+  --image us-central1-docker.pkg.dev/PROJECT_ID/hireintos/frontend:latest \
+  --region us-central1 --allow-unauthenticated --port 3000
+```
+
 ---
 
 ## Tech Stack
@@ -204,13 +317,26 @@ Open http://localhost:3000
 |-------|-----------|
 | LLM | Google Gemini 2.5 Flash |
 | Agent Framework | Google ADK (Agent Development Kit) |
-| Database Tool | MongoDB MCP Server |
+| Database Tool | MongoDB MCP Server (npx mongodb-mcp-server) |
 | Backend | Python, FastAPI, Motor (async MongoDB) |
 | Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS v4 |
 | Code Editor | Monaco Editor |
 | Voice | Web Speech API (TTS + STT) |
+| Proctoring | MediaPipe Face Mesh (eye tracking) |
+| Auth | Email + password with salted SHA-256 hashing |
 | Database | MongoDB Atlas |
-| Deployment | Google Cloud Run |
+| Deployment | Google Cloud Run + Cloud Build + Artifact Registry |
+
+---
+
+## How This Maps to Judging Criteria
+
+| Criteria | How We Address It |
+|----------|-------------------|
+| **Technological Implementation** | Multi-agent orchestration via Google ADK, MongoDB MCP Server for autonomous agent-DB interaction, MediaPipe face tracking, Web Speech API, deployed on Cloud Run with CI/CD |
+| **Design** | Voice-first circular waveform UI for Q&A rounds, Monaco editor for coding, responsive glass-morphism design, session timer, proctoring indicators |
+| **Potential Impact** | Democratizes interview prep — candidates get unlimited AI-powered practice with personalized feedback, tracks growth over time, applicable to students and job seekers globally |
+| **Quality of the Idea** | Unique combination: multi-persona agents that remember you, hints-only coding (never gives answers), eye-tracking proctoring, adaptive difficulty from MongoDB history |
 
 ---
 
@@ -222,16 +348,18 @@ Open http://localhost:3000
 |:---:|:---:|
 | ![Landing](IMAGES/01.png) | ![Select](IMAGES/02.png) |
 
-| Interview (Chat + Voice) | Coding Round |
+| Interview (Voice-First UI) | Coding Round |
 |:---:|:---:|
-| ![Interview](IMAGES/03.png) | ![Scorecard](IMAGES/04.png) |
+| ![Interview](IMAGES/03.png) | ![Coding](IMAGES/04.png) |
 
 ### Platform Flow
 
-1. **Landing** → Get Started
-2. **Select** → Choose interview rounds + upload resume/JD (PDF)
-3. **Interview** → Chat with AI (voice or text) + code editor for coding round
-4. **Scorecard** → View rubric scores, feedback, and growth tracking
+1. **Sign Up / Login** → Create account with email + password
+2. **Select Interviewers** → Choose rounds + upload resume/JD (PDF)
+3. **Interview** → Voice-first circular waveform UI (HR/Manager/Technical) or Chat + Editor (Coding)
+4. **End Round** → Agent evaluates and saves scores to MongoDB
+5. **Dashboard** → View history, score trends, strengths/weaknesses
+6. **Scorecard** → Detailed per-round rubric scores and feedback
 
 ---
 

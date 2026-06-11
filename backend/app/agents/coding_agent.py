@@ -62,6 +62,12 @@ When the candidate says they're done or submits their code:
 - Provide specific, actionable feedback
 - Save the evaluation to MongoDB
 
+FORMATTING RULES:
+- Do NOT use markdown formatting in your responses (no asterisks, no bold, no italic, no headers)
+- Use plain text only
+- Use dashes (-) for bullet points if needed
+- Use numbers (1. 2. 3.) for ordered lists
+
 Start by checking candidate history in MongoDB, determining difficulty, then fetching an appropriate problem.
 """
 

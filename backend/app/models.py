@@ -14,6 +14,7 @@ class RoundType(str, Enum):
 
 class StartSessionRequest(BaseModel):
     candidate_name: str = "Demo User"
+    email: str = ""  # Link session to user account
     rounds: list[RoundType]
     resume_text: str = ""  # Candidate's resume content
     job_description: str = ""  # Target job description

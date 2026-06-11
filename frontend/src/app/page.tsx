@@ -139,7 +139,7 @@ export default function Home() {
                     <span className="text-gradient">HireInt</span><span className="text-white">OS</span>
                 </div>
                 <button
-                    onClick={() => router.push("/select")}
+                    onClick={() => router.push("/auth")}
                     className="px-5 py-2 bg-white/5 border border-white/10 rounded-full text-sm text-white hover:bg-white/10 transition-all cursor-pointer backdrop-blur-sm"
                 >
                     Get Started
@@ -170,7 +170,7 @@ export default function Home() {
 
                 <div className="flex items-center justify-center animate-slide-up stagger-3">
                     <button
-                        onClick={() => router.push("/select")}
+                        onClick={() => router.push("/auth")}
                         className="px-10 py-4 bg-spotify-green rounded-full text-spotify-black text-lg font-bold hover:bg-spotify-green-light hover:scale-105 transition-all duration-300 cursor-pointer glow-green-strong"
                     >
                         Get Started

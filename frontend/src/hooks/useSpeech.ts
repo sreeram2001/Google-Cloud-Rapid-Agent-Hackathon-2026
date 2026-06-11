@@ -77,6 +77,13 @@ export function useTextToSpeech() {
         }
     }, []);
 
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            window.speechSynthesis.cancel();
+        };
+    }, []);
+
     return { speak, stop, isSpeaking };
 }
 

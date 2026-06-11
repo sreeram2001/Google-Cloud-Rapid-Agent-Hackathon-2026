@@ -18,6 +18,7 @@ async def start_session(request: StartSessionRequest):
     session = {
         "session_id": session_id,
         "candidate_name": request.candidate_name,
+        "email": request.email,
         "rounds": [r.value for r in request.rounds],
         "current_round_index": 0,
         "status": "active",
@@ -28,6 +29,13 @@ async def start_session(request: StartSessionRequest):
     }
 
     await db.sessions.insert_one(session)
+
+    # Link session to user account
+    if request.email:
+        await db.users.update_one(
+            {"email": request.email.lower()},
+            {"$push": {"sessions": session_id}}
+        )
 
     return StartSessionResponse(
         session_id=session_id,

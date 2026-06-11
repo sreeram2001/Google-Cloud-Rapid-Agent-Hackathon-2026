@@ -1,6 +1,7 @@
 "use client";
+import { API_URL } from "@/lib/config";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 type RoundType = "hr" | "manager" | "technical" | "coding";
@@ -62,6 +63,17 @@ export default function SelectPage() {
     const [isStarting, setIsStarting] = useState(false);
     const [resumeFileName, setResumeFileName] = useState("");
     const [jdFileName, setJdFileName] = useState("");
+    const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+
+    // Load user from localStorage on mount
+    useEffect(() => {
+        const stored = localStorage.getItem("user");
+        if (!stored) {
+            router.push("/auth");
+            return;
+        }
+        setUser(JSON.parse(stored));
+    }, [router]);
 
     const toggle = (id: RoundType) => {
         setSelected((prev) =>
@@ -84,7 +96,7 @@ export default function SelectPage() {
             formData.append("file", file);
 
             try {
-                const res = await fetch("http://localhost:8000/api/upload/parse-pdf", {
+                const res = await fetch(`${API_URL}/api/upload/parse-pdf`, {
                     method: "POST",
                     body: formData,
                 });
@@ -108,11 +120,12 @@ export default function SelectPage() {
         setIsStarting(true);
 
         try {
-            const res = await fetch("http://localhost:8000/api/sessions/start", {
+            const res = await fetch(`${API_URL}/api/sessions/start`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    candidate_name: "Demo User",
+                    candidate_name: user?.name || "User",
+                    email: user?.email || "",
                     rounds: selected,
                     resume_text: resumeText,
                     job_description: jobDescription,
@@ -137,15 +150,39 @@ export default function SelectPage() {
             <div className="max-w-7xl mx-auto relative z-10">
                 {/* Header */}
                 <div className="mb-10 animate-slide-up">
-                    <button
-                        onClick={() => router.push("/")}
-                        className="text-spotify-muted hover:text-spotify-green transition-colors text-sm mb-4 inline-flex items-center gap-1 cursor-pointer"
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                        </svg>
-                        Back
-                    </button>
+                    <div className="flex items-center justify-between mb-4">
+                        <button
+                            onClick={() => router.push("/")}
+                            className="text-spotify-muted hover:text-spotify-green transition-colors text-sm inline-flex items-center gap-1 cursor-pointer"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                            </svg>
+                            Back
+                        </button>
+                        {user && (
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm text-spotify-subtext">
+                                    Hey, <span className="text-white font-medium">{user.name}</span>
+                                </span>
+                                <button
+                                    onClick={() => router.push("/dashboard")}
+                                    className="text-xs px-3 py-1.5 rounded-full border border-spotify-green/20 text-spotify-green hover:bg-spotify-green/5 transition-all cursor-pointer"
+                                >
+                                    Dashboard
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        localStorage.removeItem("user");
+                                        router.push("/auth");
+                                    }}
+                                    className="text-xs px-3 py-1.5 rounded-full border border-white/10 text-spotify-muted hover:text-white hover:border-white/20 transition-all cursor-pointer"
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        )}
+                    </div>
                     <h1 className="text-4xl md:text-5xl font-bold font-[family-name:var(--font-display)] tracking-tight">
                         Pick Your <span className="text-gradient">Interviewers</span>
                     </h1>
@@ -163,8 +200,8 @@ export default function SelectPage() {
                                 key={persona.id}
                                 onClick={() => toggle(persona.id)}
                                 className={`group relative rounded-3xl overflow-hidden text-left transition-all duration-500 cursor-pointer backdrop-blur-sm ${isSelected
-                                        ? `ring-2 ring-spotify-green/70 scale-[1.03] shadow-2xl ${persona.glowColor}`
-                                        : "hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/40"
+                                    ? `ring-2 ring-spotify-green/70 scale-[1.03] shadow-2xl ${persona.glowColor}`
+                                    : "hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/40"
                                     }`}
                             >
                                 {/* Image with mirror/glass overlay */}
@@ -202,8 +239,8 @@ export default function SelectPage() {
 
                                 {/* Card body — frosted glass */}
                                 <div className={`p-4 backdrop-blur-xl transition-all duration-300 border-t border-white/5 ${isSelected
-                                        ? "bg-spotify-green/5 border-t-spotify-green/20"
-                                        : "bg-white/[0.02] group-hover:bg-white/[0.04]"
+                                    ? "bg-spotify-green/5 border-t-spotify-green/20"
+                                    : "bg-white/[0.02] group-hover:bg-white/[0.04]"
                                     }`}>
                                     <p className="text-xs text-spotify-subtext leading-relaxed line-clamp-2">
                                         {persona.description}

@@ -1,4 +1,5 @@
 "use client";
+import { API_URL } from "@/lib/config";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -31,7 +32,7 @@ export default function ScorecardPage() {
     const fetchScorecard = async () => {
         try {
             const res = await fetch(
-                `http://localhost:8000/api/sessions/${sessionId}/scorecard`
+                `${API_URL}/api/sessions/${sessionId}/scorecard`
             );
             const data = await res.json();
             setScorecard(data);

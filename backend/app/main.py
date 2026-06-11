@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.database import connect_db, close_db
-from app.routes import interview, sessions, upload
+from app.routes import auth, dashboard, interview, sessions, upload
 
 
 @asynccontextmanager
@@ -23,12 +23,14 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(sessions.router, prefix="/api/sessions", tags=["sessions"])
 app.include_router(interview.router, prefix="/api/interview", tags=["interview"])
 app.include_router(upload.router, prefix="/api/upload", tags=["upload"])
