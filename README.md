@@ -344,13 +344,17 @@ gcloud run deploy hireintos-frontend \
 
 ### Screenshots
 
-| Landing Page | Persona Selection |
+| Landing Page | Auth (Login/Signup) |
 |:---:|:---:|
-| ![Landing](IMAGES/01.png) | ![Select](IMAGES/02.png) |
+| ![Landing](IMAGES/1.png) | ![Auth](IMAGES/2.png) |
 
-| Interview (Voice-First UI) | Coding Round |
+| Persona Selection | Voice-First Interview |
 |:---:|:---:|
-| ![Interview](IMAGES/03.png) | ![Coding](IMAGES/04.png) |
+| ![Select](IMAGES/3.png) | ![Interview](IMAGES/4.png) |
+
+| Coding Round | Dashboard |
+|:---:|:---:|
+| ![Coding](IMAGES/5.png) | ![Dashboard](IMAGES/6.png) |
 
 ### Platform Flow
 
