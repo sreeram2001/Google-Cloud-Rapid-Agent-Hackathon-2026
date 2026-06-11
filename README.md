@@ -5,7 +5,8 @@
 Built for the **Google Cloud Rapid Agent Hackathon 2026** · MongoDB Partner Track
 
 **Live Demo:** https://hireintos-frontend-856672744274.us-central1.run.app  
-**Backend API:** https://hireintos-backend-856672744274.us-central1.run.app
+**Backend API:** https://hireintos-backend-856672744274.us-central1.run.app  
+**Demo Video:** https://youtu.be/iyTSmtlEOZE
 
 ---
 
