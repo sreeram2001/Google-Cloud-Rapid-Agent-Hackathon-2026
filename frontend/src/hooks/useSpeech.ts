@@ -6,14 +6,21 @@ export function useTextToSpeech() {
     const [isSpeaking, setIsSpeaking] = useState(false);
     const onEndCallbackRef = useRef<(() => void) | null>(null);
 
-    // Load voices on mount
+    // Load voices on mount — macOS needs voiceschanged event
     useEffect(() => {
-        if (typeof window !== "undefined" && window.speechSynthesis) {
+        if (typeof window === "undefined" || !window.speechSynthesis) return;
+
+        // Force load voices
+        window.speechSynthesis.getVoices();
+
+        const handleVoicesChanged = () => {
             window.speechSynthesis.getVoices();
-            window.speechSynthesis.onvoiceschanged = () => {
-                window.speechSynthesis.getVoices();
-            };
-        }
+        };
+
+        window.speechSynthesis.addEventListener("voiceschanged", handleVoicesChanged);
+        return () => {
+            window.speechSynthesis.removeEventListener("voiceschanged", handleVoicesChanged);
+        };
     }, []);
 
     const speak = useCallback((text: string, onEnd?: () => void) => {
@@ -23,17 +30,23 @@ export function useTextToSpeech() {
         onEndCallbackRef.current = onEnd || null;
 
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.05;
+        utterance.rate = 1.0;
         utterance.pitch = 1.0;
         utterance.volume = 1.0;
 
-        // Pick best available voice — prefer natural/enhanced voices
+        // Pick best available voice — prefer premium/natural voices on macOS
         const voices = window.speechSynthesis.getVoices();
         const preferredNames = [
-            "Samantha",        // macOS — natural female
-            "Daniel",          // macOS — natural male (British)
-            "Karen",           // macOS — natural female (Australian)
-            "Moira",           // macOS — natural female (Irish)
+            "Zoe (Premium)",       // macOS premium
+            "Samantha (Premium)",  // macOS premium  
+            "Karen (Premium)",     // macOS premium (Australian)
+            "Daniel (Premium)",    // macOS premium (British)
+            "Zoe",                 // macOS natural
+            "Samantha",            // macOS natural female
+            "Daniel",              // macOS natural male (British)
+            "Karen",               // macOS natural female (Australian)
+            "Moira",              // macOS natural female (Irish)
+            "Tessa",              // macOS
             "Google UK English Female",
             "Google UK English Male",
             "Google US English",
@@ -49,9 +62,10 @@ export function useTextToSpeech() {
                 break;
             }
         }
-        // Fallback: pick any English voice
+        // Fallback: pick any English voice that isn't "compact" or "enhanced" (those are low quality)
         if (!selectedVoice) {
-            selectedVoice = voices.find((v) => v.lang.startsWith("en")) || null;
+            selectedVoice = voices.find((v) => v.lang.startsWith("en") && !v.name.includes("compact")) ||
+                voices.find((v) => v.lang.startsWith("en")) || null;
         }
         if (selectedVoice) utterance.voice = selectedVoice;
 
