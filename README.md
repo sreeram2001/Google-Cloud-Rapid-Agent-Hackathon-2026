@@ -1,4 +1,4 @@
-# HireIntOS — AI Multi-Persona Interview Platform
+# HireIntOS - AI Multi-Persona Interview Platform
 
 > Practice interviews with AI agents that read your resume, adapt in real-time, give hints not answers, and score you on professional rubrics.
 
@@ -11,7 +11,7 @@ Built for the **Google Cloud Rapid Agent Hackathon 2026** · MongoDB Partner Tra
 
 ## What It Does
 
-HireIntOS simulates a real multi-round hiring process with 4 specialized AI interviewer agents. Sign up, upload your resume and target job description — the agents generate personalized questions, remember your past sessions, and adapt difficulty based on your performance.
+HireIntOS simulates a real multi-round hiring process with 4 specialized AI interviewer agents. Sign up, upload your resume and target job description - the agents generate personalized questions, remember your past sessions, and adapt difficulty based on your performance.
 
 ### The 4 AI Interviewers
 
@@ -24,34 +24,34 @@ HireIntOS simulates a real multi-round hiring process with 4 specialized AI inte
 
 ### Key Features
 
-- **User authentication** — Sign up / login with email + password, all sessions linked to your account
-- **Resume-aware** — Agents generate questions from your resume + job description
-- **Voice-first interview UI** — Circular waveform animation, auto-listen after agent speaks
-- **Webcam + proctoring** — MediaPipe face mesh eye tracking detects when you look away, beeps as warning
-- **Hints-only coding round** — AI guides you with progressive hints, never reveals solutions
-- **Monaco code editor** — Full IDE experience for the coding round
-- **Multi-dimensional scorecard** — Rubric-based evaluation per round
-- **Dashboard** — Session history, score trends, strengths/weaknesses, progress over time
-- **Candidate memory** — Remembers past sessions, tracks growth across interviews
-- **Adaptive difficulty** — Adjusts question difficulty based on past performance
-- **PDF upload** — Upload resume and JD as PDFs
-- **Session timer** — Tracks interview duration
+- **User authentication** - Sign up / login with email + password, all sessions linked to your account
+- **Resume-aware** - Agents generate questions from your resume + job description
+- **Voice-first interview UI** - Circular waveform animation, auto-listen after agent speaks
+- **Webcam + proctoring** - MediaPipe face mesh eye tracking detects when you look away, beeps as warning
+- **Hints-only coding round** - AI guides you with progressive hints, never reveals solutions
+- **Monaco code editor** - Full IDE experience for the coding round
+- **Multi-dimensional scorecard** - Rubric-based evaluation per round
+- **Dashboard** - Session history, score trends, strengths/weaknesses, progress over time
+- **Candidate memory** - Remembers past sessions, tracks growth across interviews
+- **Adaptive difficulty** - Adjusts question difficulty based on past performance
+- **PDF upload** - Upload resume and JD as PDFs
+- **Session timer** - Tracks interview duration
 
 ---
 
 ## MongoDB MCP Server Integration
 
-This project uses the [MongoDB MCP Server](https://github.com/mongodb-js/mongodb-mcp-server) as the primary tool interface between AI agents and the database — making MongoDB Atlas the **persistent memory layer** for all agentic workloads.
+This project uses the [MongoDB MCP Server](https://github.com/mongodb-js/mongodb-mcp-server) as the primary tool interface between AI agents and the database - making MongoDB Atlas the **persistent memory layer** for all agentic workloads.
 
 ### Why MongoDB is Essential (Not Just Storage)
 
 Unlike a simple CRUD backend, our agents **autonomously query and write to MongoDB during conversations** via the MCP Server. MongoDB Atlas serves as the unified operational foundation where:
 
-1. **Agents reason over historical data** — Before asking questions, agents query past evaluations to understand candidate strengths/weaknesses
-2. **Agents adapt in real-time** — Aggregation pipelines calculate average scores to dynamically adjust difficulty
-3. **Agents deduplicate questions** — Queries prevent repeating problems across sessions
-4. **Agents persist their own evaluations** — At round end, agents write structured rubric scores directly to MongoDB
-5. **Cross-session memory** — Agents reference performance from previous sessions, noting improvement trends
+1. **Agents reason over historical data** - Before asking questions, agents query past evaluations to understand candidate strengths/weaknesses
+2. **Agents adapt in real-time** - Aggregation pipelines calculate average scores to dynamically adjust difficulty
+3. **Agents deduplicate questions** - Queries prevent repeating problems across sessions
+4. **Agents persist their own evaluations** - At round end, agents write structured rubric scores directly to MongoDB
+5. **Cross-session memory** - Agents reference performance from previous sessions, noting improvement trends
 
 ### MCP Tools Used by Agents
 
